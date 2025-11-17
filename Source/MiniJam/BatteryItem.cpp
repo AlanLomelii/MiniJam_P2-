@@ -1,49 +1,60 @@
 ﻿#include "BatteryItem.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Net/UnrealNetwork.h"
 
 ABatteryItem::ABatteryItem()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
+	// Colisión principal
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComp"));
 	RootComponent = CollisionComp;
 	CollisionComp->InitSphereRadius(50.f);
 	CollisionComp->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 
+	// Mesh visual
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(RootComponent);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Sphere"));
-	if (SphereMesh.Succeeded())
-	{
-		MeshComp->SetStaticMesh(SphereMesh.Object);
-	}
-
 	
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Valor que dará al jugador
 	EnergyValue = 25.f;
 }
+
 
 void ABatteryItem::BeginPlay()
 {
 	Super::BeginPlay();
+}
+
+void ABatteryItem::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
 	
+	FRotator Rot(0.f, RotationSpeed * DeltaTime, 0.f);
+	AddActorLocalRotation(Rot);
 }
 
 void ABatteryItem::NotifyActorBeginOverlap(AActor* OtherActor)
 {
-	if (HasAuthority())
-	{
-		Destroy();
-	}
-}
+	
+	if (!HasAuthority())
+		return;
 
-#include "Net/UnrealNetwork.h"
+	// logica de energia
+	
+	Destroy();
+}
 
 void ABatteryItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
-}
 
+	
+	DOREPLIFETIME(ABatteryItem, EnergyValue);
+}
 
