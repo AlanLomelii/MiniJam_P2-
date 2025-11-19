@@ -17,3 +17,16 @@ void UMiniJamUI::UpdateGear(int32 NewGear)
 	// call the Blueprint handler
 	OnGearUpdate(NewGear);
 }
+
+void UMiniJamUI::UpdateEnergy(float CurrentEnergy, float MaxEnergy)
+{
+	float Percent = 0.0f;
+	if (MaxEnergy > 0.0f)
+	{
+		Percent = CurrentEnergy / MaxEnergy;
+	}
+
+	Percent = FMath::Clamp(Percent, 0.0f, 1.0f);
+
+	OnEnergyUpdate(Percent);
+}

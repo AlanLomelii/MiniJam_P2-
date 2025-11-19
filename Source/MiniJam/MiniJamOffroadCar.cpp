@@ -6,9 +6,11 @@
 #include "MiniJamOffroadWheelRear.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Net/UnrealNetwork.h"
 
 AMiniJamOffroadCar::AMiniJamOffroadCar()
 {
+	PrimaryActorTick.bCanEverTick = true;
 	// construct the mesh components
 	Chassis = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Chassis"));
 	Chassis->SetupAttachment(GetMesh());
@@ -82,4 +84,84 @@ AMiniJamOffroadCar::AMiniJamOffroadCar()
 	// NOTE: Check the Blueprint asset for the Steering Curve
 	GetChaosVehicleMovement()->SteeringSetup.SteeringType = ESteeringType::AngleRatio;
 	GetChaosVehicleMovement()->SteeringSetup.AngleRatio = 0.7f;
+
+	bReplicates = true;
+
+	if (UChaosWheeledVehicleMovementComponent* MovementComp = GetChaosVehicleMovement())
+	{
+		MovementComp->SetIsReplicated(true); 
+		
+		MovementComp->SetComponentTickEnabled(true); 
+	}
+
+	CurrentEnergy = MaxEnergy;
+}
+
+void AMiniJamOffroadCar::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME(AMiniJamOffroadCar, CurrentEnergy);
+
+	DOREPLIFETIME(AMiniJamOffroadCar, bCanMove);
+}
+
+
+void AMiniJamOffroadCar::AddEnergy(float Amount)
+{
+	CurrentEnergy = FMath::Clamp(CurrentEnergy + Amount, 0.0f, MaxEnergy);
+	
+	if (HasAuthority())
+	{
+		GetChaosVehicleMovement()->SetBrakeInput(0.0f); 
+	}
+}
+
+
+void AMiniJamOffroadCar::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+    
+	if (HasAuthority()) 
+	{
+		UChaosWheeledVehicleMovementComponent* MovementComp = GetChaosVehicleMovement();
+		if (!MovementComp) return; 
+       
+		
+		float CurrentSpeed = MovementComp->GetForwardSpeed();
+       
+		
+       
+		if (CurrentEnergy > 0.0f)
+		{
+			if (FMath::Abs(CurrentSpeed) > 1.0f) 
+			{
+				CurrentEnergy = FMath::Max(0.0f, CurrentEnergy - EnergyDrainRate * DeltaTime);
+			}
+			
+			if (MovementComp->GetBrakeInput() >= 1.0f)
+			{
+				MovementComp->SetBrakeInput(0.0f);
+			}
+          
+			bCanMove = true; 
+		}
+       
+		else 
+		{
+			
+			bCanMove = false; 
+		
+			if (FMath::Abs(CurrentSpeed) > 10.0f) 
+			{
+				MovementComp->SetThrottleInput(0.0f); 
+				MovementComp->SetBrakeInput(0.0f);    
+			}
+			
+			else 
+			{
+				MovementComp->SetBrakeInput(1.0f); 
+			}
+		}
+	}
 }

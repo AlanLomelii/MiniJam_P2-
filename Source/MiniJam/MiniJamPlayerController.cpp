@@ -6,17 +6,21 @@
 #include "MiniJamUI.h"
 #include "EnhancedInputSubsystems.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "MiniJamOffroadCar.h"
 
 void AMiniJamPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// spawn the UI widget and add it to the viewport
-	VehicleUI = CreateWidget<UMiniJamUI>(this, VehicleUIClass);
-
-	check(VehicleUI);
-
-	VehicleUI->AddToViewport();
+	if (VehicleUIClass && IsLocalPlayerController())
+	{
+		VehicleUI = CreateWidget<UMiniJamUI>(this, VehicleUIClass);
+		
+		if (VehicleUI)
+		{
+			VehicleUI->AddToViewport();
+		}
+	}
 }
 
 void AMiniJamPlayerController::SetupInputComponent()
@@ -40,11 +44,31 @@ void AMiniJamPlayerController::SetupInputComponent()
 void AMiniJamPlayerController::Tick(float Delta)
 {
 	Super::Tick(Delta);
-
+	
+	if (VehiclePawn == nullptr)
+	{
+		VehiclePawn = Cast<AMiniJamPawn>(GetPawn());
+	}
+	
 	if (IsValid(VehiclePawn) && IsValid(VehicleUI))
 	{
-		VehicleUI->UpdateSpeed(VehiclePawn->GetChaosVehicleMovement()->GetForwardSpeed());
-		VehicleUI->UpdateGear(VehiclePawn->GetChaosVehicleMovement()->GetCurrentGear());
+	
+		UChaosWheeledVehicleMovementComponent* MovementComp = VehiclePawn->GetChaosVehicleMovement();
+		
+		if (MovementComp) 
+		{
+			VehicleUI->UpdateSpeed(MovementComp->GetForwardSpeed());
+			
+			VehicleUI->UpdateGear(MovementComp->GetCurrentGear());
+            
+			AMiniJamOffroadCar* MyCar = Cast<AMiniJamOffroadCar>(VehiclePawn);
+        
+			if (MyCar)
+			{
+				VehicleUI->UpdateEnergy(MyCar->GetCurrentEnergy(), MyCar->GetMaxEnergy());
+			}
+		}
+		
 	}
 }
 
