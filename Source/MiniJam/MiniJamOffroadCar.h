@@ -37,4 +37,32 @@ class MINIJAM_API AMiniJamOffroadCar : public AMiniJamPawn
 public:
 
 	AMiniJamOffroadCar();
+	virtual void Tick(float DeltaTime) override;
+
+protected:
+
+	// energy
+	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Vehicle Stats")
+	float CurrentEnergy;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vehicle Stats")
+	float MaxEnergy = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vehicle Stats")
+	float EnergyDrainRate = 1.0f;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Vehicle Stats")
+	bool bCanMove = true;
+
+public:
+
+	
+	UFUNCTION(BlueprintCallable, Category = "Vehicle Stats")
+	void AddEnergy(float Amount);
+	
+	UFUNCTION(BlueprintCallable, Category = "Vehicle Stats")
+	float GetCurrentEnergy() const { return CurrentEnergy; }
+
+	UFUNCTION(BlueprintCallable, Category = "Vehicle Stats")
+	float GetMaxEnergy() const { return MaxEnergy; }
 };

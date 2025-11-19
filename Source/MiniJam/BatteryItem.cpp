@@ -2,17 +2,18 @@
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "MiniJamOffroadCar.h"
 
 ABatteryItem::ABatteryItem()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	bReplicates = true;
 
-	// Colisión principal
+	// Colision principal
 	CollisionComp = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComp"));
 	RootComponent = CollisionComp;
 	CollisionComp->InitSphereRadius(50.f);
-	CollisionComp->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	CollisionComp->SetCollisionProfileName(TEXT("OverlapOnlyPawn"));
 
 	// Mesh visual
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
@@ -20,7 +21,7 @@ ABatteryItem::ABatteryItem()
 	
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	// Valor que dará al jugador
+	// Valor que dara al jugador
 	EnergyValue = 25.f;
 }
 
@@ -41,13 +42,22 @@ void ABatteryItem::Tick(float DeltaTime)
 
 void ABatteryItem::NotifyActorBeginOverlap(AActor* OtherActor)
 {
-	
+	Super::NotifyActorBeginOverlap(OtherActor);
+
 	if (!HasAuthority())
 		return;
 
-	// logica de energia
+	if (!OtherActor || OtherActor == this)
+		return;
+
 	
-	Destroy();
+	AMiniJamOffroadCar* MyCar = Cast<AMiniJamOffroadCar>(OtherActor);
+
+	if (MyCar)
+	{
+		MyCar->AddEnergy(EnergyValue);
+		Destroy();
+	}
 }
 
 void ABatteryItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

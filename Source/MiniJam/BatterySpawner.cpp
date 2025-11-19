@@ -19,7 +19,7 @@ void ABatterySpawner::BeginPlay()
 
 	if (HasAuthority() && BatteryClass)
 	{
-		// Empezar a generar baterías cada cierto tiempo
+		
 		GetWorldTimerManager().SetTimer(SpawnTimer, this, &ABatterySpawner::SpawnBattery, SpawnInterval, true);
 	}
 }
@@ -35,11 +35,24 @@ void ABatterySpawner::SpawnBattery()
 	FVector SpawnLocation = GetRandomPointInArea();
 	FRotator SpawnRotation = FRotator::ZeroRotator;
 
-	ABatteryItem* NewBattery = GetWorld()->SpawnActor<ABatteryItem>(BatteryClass, SpawnLocation, SpawnRotation);
+	
+	FActorSpawnParameters SpawnParams;
+	
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+	ABatteryItem* NewBattery = GetWorld()->SpawnActor<ABatteryItem>(BatteryClass, SpawnLocation, SpawnRotation, SpawnParams);
+    
 	if (NewBattery)
 	{
 		CurrentBatteryCount++;
 		NewBattery->OnDestroyed.AddDynamic(this, &ABatterySpawner::OnBatteryDestroyed);
+		
+		UE_LOG(LogTemp, Warning, TEXT("Bateria spawneada en: %s"), *SpawnLocation.ToString());
+	}
+	else
+	{
+		
+		UE_LOG(LogTemp, Error, TEXT("Fallo al spawnear bateria."));
 	}
 }
 
