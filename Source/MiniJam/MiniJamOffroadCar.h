@@ -37,6 +37,7 @@ class MINIJAM_API AMiniJamOffroadCar : public AMiniJamPawn
 public:
 
 	AMiniJamOffroadCar();
+	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 
 protected:
@@ -45,14 +46,22 @@ protected:
 	UPROPERTY(EditAnywhere, Replicated, BlueprintReadWrite, Category = "Vehicle Stats")
 	float CurrentEnergy;
 
+	UFUNCTION()
+	void OnRep_CurrentEnergy();
+	
+	UPROPERTY()
+	class UMiniJamUI* VehicleHUD;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vehicle Stats")
 	float MaxEnergy = 100.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vehicle Stats")
-	float EnergyDrainRate = 1.0f;
+	float BaseEnergyDrainRate = 1.0f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vehicle Stats")
+	float MovingEnergyDrainRate = 0.9f;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Vehicle Stats")
-	bool bCanMove = true;
+	
 
 public:
 
@@ -65,4 +74,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Vehicle Stats")
 	float GetMaxEnergy() const { return MaxEnergy; }
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Vehicle Stats")
+	bool bCanMove = true;
+
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	FText GetBatteryStatusText() const;
 };

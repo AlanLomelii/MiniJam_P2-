@@ -44,31 +44,24 @@ void AMiniJamPlayerController::SetupInputComponent()
 void AMiniJamPlayerController::Tick(float Delta)
 {
 	Super::Tick(Delta);
-	
 	if (VehiclePawn == nullptr)
 	{
 		VehiclePawn = Cast<AMiniJamPawn>(GetPawn());
 	}
-	
+
 	if (IsValid(VehiclePawn) && IsValid(VehicleUI))
 	{
-	
-		UChaosWheeledVehicleMovementComponent* MovementComp = VehiclePawn->GetChaosVehicleMovement();
+		VehicleUI->UpdateSpeed(VehiclePawn->GetChaosVehicleMovement()->GetForwardSpeed());
+		VehicleUI->UpdateGear(VehiclePawn->GetChaosVehicleMovement()->GetCurrentGear());
 		
-		if (MovementComp) 
-		{
-			VehicleUI->UpdateSpeed(MovementComp->GetForwardSpeed());
-			
-			VehicleUI->UpdateGear(MovementComp->GetCurrentGear());
-            
-			AMiniJamOffroadCar* MyCar = Cast<AMiniJamOffroadCar>(VehiclePawn);
+		AMiniJamOffroadCar* MyCar = Cast<AMiniJamOffroadCar>(VehiclePawn);
         
-			if (MyCar)
-			{
-				VehicleUI->UpdateEnergy(MyCar->GetCurrentEnergy(), MyCar->GetMaxEnergy());
-			}
+		if (MyCar)
+		{
+			VehicleUI->UpdateEnergy(MyCar->GetCurrentEnergy(), MyCar->GetMaxEnergy());
+			
+			VehicleUI->OnBatteryStatusUpdate(MyCar->GetBatteryStatusText());
 		}
-		
 	}
 }
 
@@ -78,4 +71,13 @@ void AMiniJamPlayerController::OnPossess(APawn* InPawn)
 
 	// get a pointer to the controlled pawn
 	VehiclePawn = CastChecked<AMiniJamPawn>(InPawn);
+}
+
+void AMiniJamPlayerController::Client_ShowGameOver_Implementation(bool bIsWinner)
+{
+	if (VehicleUI)
+	{
+		
+		VehicleUI->OnGameOver(bIsWinner);
+	}
 }

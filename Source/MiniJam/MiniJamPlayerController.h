@@ -57,6 +57,9 @@ public:
 
 	virtual void Tick(float Delta) override;
 
+	UFUNCTION(Client, Reliable)
+    void Client_ShowGameOver(bool bIsWinner);
+
 	// End Actor interface
 
 	// Begin PlayerController interface

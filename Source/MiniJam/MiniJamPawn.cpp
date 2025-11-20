@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "MiniJamPawn.h"
 #include "MiniJamWheelFront.h"
 #include "MiniJamWheelRear.h"
@@ -10,198 +8,244 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "MiniJamOffroadCar.h" 
 
 #define LOCTEXT_NAMESPACE "VehiclePawn"
 
 DEFINE_LOG_CATEGORY(LogTemplateVehicle);
 
+
+bool CanPawnMove(const AMiniJamPawn* Pawn)
+{
+   
+    const AMiniJamOffroadCar* Car = Cast<AMiniJamOffroadCar>(Pawn);
+    
+    return !Car || Car->bCanMove;
+}
+// --------------------------------------------------
+
 AMiniJamPawn::AMiniJamPawn()
 {
-	// construct the front camera boom
-	FrontSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Front Spring Arm"));
-	FrontSpringArm->SetupAttachment(GetMesh());
-	FrontSpringArm->TargetArmLength = 0.0f;
-	FrontSpringArm->bDoCollisionTest = false;
-	FrontSpringArm->bEnableCameraRotationLag = true;
-	FrontSpringArm->CameraRotationLagSpeed = 15.0f;
-	FrontSpringArm->SetRelativeLocation(FVector(30.0f, 0.0f, 120.0f));
+    // construct the front camera boom
+    FrontSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Front Spring Arm"));
+    FrontSpringArm->SetupAttachment(GetMesh());
+    FrontSpringArm->TargetArmLength = 0.0f;
+    FrontSpringArm->bDoCollisionTest = false;
+    FrontSpringArm->bEnableCameraRotationLag = true;
+    FrontSpringArm->CameraRotationLagSpeed = 15.0f;
+    FrontSpringArm->SetRelativeLocation(FVector(30.0f, 0.0f, 120.0f));
 
-	FrontCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Front Camera"));
-	FrontCamera->SetupAttachment(FrontSpringArm);
-	FrontCamera->bAutoActivate = false;
+    FrontCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Front Camera"));
+    FrontCamera->SetupAttachment(FrontSpringArm);
+    FrontCamera->bAutoActivate = false;
 
-	// construct the back camera boom
-	BackSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Back Spring Arm"));
-	BackSpringArm->SetupAttachment(GetMesh());
-	BackSpringArm->TargetArmLength = 650.0f;
-	BackSpringArm->SocketOffset.Z = 150.0f;
-	BackSpringArm->bDoCollisionTest = false;
-	BackSpringArm->bInheritPitch = false;
-	BackSpringArm->bInheritRoll = false;
-	BackSpringArm->bEnableCameraRotationLag = true;
-	BackSpringArm->CameraRotationLagSpeed = 2.0f;
-	BackSpringArm->CameraLagMaxDistance = 50.0f;
+    // construct the back camera boom
+    BackSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("Back Spring Arm"));
+    BackSpringArm->SetupAttachment(GetMesh());
+    BackSpringArm->TargetArmLength = 650.0f;
+    BackSpringArm->SocketOffset.Z = 150.0f;
+    BackSpringArm->bDoCollisionTest = false;
+    BackSpringArm->bInheritPitch = false;
+    BackSpringArm->bInheritRoll = false;
+    BackSpringArm->bEnableCameraRotationLag = true;
+    BackSpringArm->CameraRotationLagSpeed = 2.0f;
+    BackSpringArm->CameraLagMaxDistance = 50.0f;
 
-	BackCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Back Camera"));
-	BackCamera->SetupAttachment(BackSpringArm);
+    BackCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Back Camera"));
+    BackCamera->SetupAttachment(BackSpringArm);
 
-	// Configure the car mesh
-	GetMesh()->SetSimulatePhysics(true);
-	GetMesh()->SetCollisionProfileName(FName("Vehicle"));
+    // Configure the car mesh
+    GetMesh()->SetSimulatePhysics(true);
+    GetMesh()->SetCollisionProfileName(FName("Vehicle"));
 
-	// get the Chaos Wheeled movement component
-	ChaosVehicleMovement = CastChecked<UChaosWheeledVehicleMovementComponent>(GetVehicleMovement());
+    // get the Chaos Wheeled movement component
+    ChaosVehicleMovement = CastChecked<UChaosWheeledVehicleMovementComponent>(GetVehicleMovement());
 
 }
 
 void AMiniJamPawn::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+    Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
-	{
-		// steering 
-		EnhancedInputComponent->BindAction(SteeringAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::Steering);
-		EnhancedInputComponent->BindAction(SteeringAction, ETriggerEvent::Completed, this, &AMiniJamPawn::Steering);
+    if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+    {
+       // steering 
+       EnhancedInputComponent->BindAction(SteeringAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::Steering);
+       EnhancedInputComponent->BindAction(SteeringAction, ETriggerEvent::Completed, this, &AMiniJamPawn::Steering);
 
-		// throttle 
-		EnhancedInputComponent->BindAction(ThrottleAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::Throttle);
-		EnhancedInputComponent->BindAction(ThrottleAction, ETriggerEvent::Completed, this, &AMiniJamPawn::Throttle);
+       // throttle 
+       EnhancedInputComponent->BindAction(ThrottleAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::Throttle);
+       EnhancedInputComponent->BindAction(ThrottleAction, ETriggerEvent::Completed, this, &AMiniJamPawn::Throttle);
 
-		// break 
-		EnhancedInputComponent->BindAction(BrakeAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::Brake);
-		EnhancedInputComponent->BindAction(BrakeAction, ETriggerEvent::Started, this, &AMiniJamPawn::StartBrake);
-		EnhancedInputComponent->BindAction(BrakeAction, ETriggerEvent::Completed, this, &AMiniJamPawn::StopBrake);
+       // break 
+       EnhancedInputComponent->BindAction(BrakeAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::Brake);
+       EnhancedInputComponent->BindAction(BrakeAction, ETriggerEvent::Started, this, &AMiniJamPawn::StartBrake);
+       EnhancedInputComponent->BindAction(BrakeAction, ETriggerEvent::Completed, this, &AMiniJamPawn::StopBrake);
 
-		// handbrake 
-		EnhancedInputComponent->BindAction(HandbrakeAction, ETriggerEvent::Started, this, &AMiniJamPawn::StartHandbrake);
-		EnhancedInputComponent->BindAction(HandbrakeAction, ETriggerEvent::Completed, this, &AMiniJamPawn::StopHandbrake);
+       // handbrake 
+       EnhancedInputComponent->BindAction(HandbrakeAction, ETriggerEvent::Started, this, &AMiniJamPawn::StartHandbrake);
+       EnhancedInputComponent->BindAction(HandbrakeAction, ETriggerEvent::Completed, this, &AMiniJamPawn::StopHandbrake);
 
-		// look around 
-		EnhancedInputComponent->BindAction(LookAroundAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::LookAround);
+       // look around 
+       EnhancedInputComponent->BindAction(LookAroundAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::LookAround);
 
-		// toggle camera 
-		EnhancedInputComponent->BindAction(ToggleCameraAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::ToggleCamera);
+       // toggle camera 
+       EnhancedInputComponent->BindAction(ToggleCameraAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::ToggleCamera);
 
-		// reset the vehicle 
-		EnhancedInputComponent->BindAction(ResetVehicleAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::ResetVehicle);
-	}
-	else
-	{
-		UE_LOG(LogTemplateVehicle, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
-	}
+       // reset the vehicle 
+       EnhancedInputComponent->BindAction(ResetVehicleAction, ETriggerEvent::Triggered, this, &AMiniJamPawn::ResetVehicle);
+    }
+    else
+    {
+       UE_LOG(LogTemplateVehicle, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+    }
 }
 
 void AMiniJamPawn::Tick(float Delta)
 {
-	Super::Tick(Delta);
+    Super::Tick(Delta);
+    // add some angular damping if the vehicle is in midair
+    bool bMovingOnGround = ChaosVehicleMovement->IsMovingOnGround();
+    GetMesh()->SetAngularDamping(bMovingOnGround ? 0.0f : 3.0f);
 
-	// add some angular damping if the vehicle is in midair
-	bool bMovingOnGround = ChaosVehicleMovement->IsMovingOnGround();
-	GetMesh()->SetAngularDamping(bMovingOnGround ? 0.0f : 3.0f);
+    // realign the camera yaw to face front
+    float CameraYaw = BackSpringArm->GetRelativeRotation().Yaw;
+    CameraYaw = FMath::FInterpTo(CameraYaw, 0.0f, Delta, 1.0f);
 
-	// realign the camera yaw to face front
-	float CameraYaw = BackSpringArm->GetRelativeRotation().Yaw;
-	CameraYaw = FMath::FInterpTo(CameraYaw, 0.0f, Delta, 1.0f);
-
-	BackSpringArm->SetRelativeRotation(FRotator(0.0f, CameraYaw, 0.0f));
+    BackSpringArm->SetRelativeRotation(FRotator(0.0f, CameraYaw, 0.0f));
 }
 
 void AMiniJamPawn::Steering(const FInputActionValue& Value)
 {
-	// get the input magnitude for steering
-	float SteeringValue = Value.Get<float>();
+    // get the input magnitude for steering
+    float SteeringValue = Value.Get<float>();
 
-	// add the input
-	ChaosVehicleMovement->SetSteeringInput(SteeringValue);
+    
+    if (!CanPawnMove(this))
+    {
+       SteeringValue = 0.0f; 
+    }
+
+    // add the input
+    ChaosVehicleMovement->SetSteeringInput(SteeringValue);
 }
 
 void AMiniJamPawn::Throttle(const FInputActionValue& Value)
 {
-	// get the input magnitude for the throttle
-	float ThrottleValue = Value.Get<float>();
+    // get the input magnitude for the throttle
+    float ThrottleValue = Value.Get<float>();
+    
+    if (!CanPawnMove(this))
+    {
+       ThrottleValue = 0.0f; 
+    }
 
-	// add the input
-	ChaosVehicleMovement->SetThrottleInput(ThrottleValue);
+    // add the input
+    ChaosVehicleMovement->SetThrottleInput(ThrottleValue);
 }
 
 void AMiniJamPawn::Brake(const FInputActionValue& Value)
 {
-	// get the input magnitude for the brakes
-	float BreakValue = Value.Get<float>();
+    // get the input magnitude for the brakes
+    float BreakValue = Value.Get<float>();
+    
+    if (!CanPawnMove(this))
+    {
+       BreakValue = 0.0f;
+    }
 
-	// add the input
-	ChaosVehicleMovement->SetBrakeInput(BreakValue);
+    // add the input
+    ChaosVehicleMovement->SetBrakeInput(BreakValue);
 }
 
 void AMiniJamPawn::StartBrake(const FInputActionValue& Value)
 {
-	// call the Blueprint hook for the break lights
-	BrakeLights(true);
+    if (!CanPawnMove(this))
+    {
+        return;
+    }
+    
+    // call the Blueprint hook for the break lights
+    BrakeLights(true);
 }
 
 void AMiniJamPawn::StopBrake(const FInputActionValue& Value)
 {
-	// call the Blueprint hook for the break lights
-	BrakeLights(false);
-
-	// reset brake input to zero
-	ChaosVehicleMovement->SetBrakeInput(0.0f);
+    // call the Blueprint hook for the break lights
+    BrakeLights(false);
+    
+    if (CanPawnMove(this))
+    {
+        // reset brake input to zero
+        ChaosVehicleMovement->SetBrakeInput(0.0f);
+    }
 }
 
 void AMiniJamPawn::StartHandbrake(const FInputActionValue& Value)
 {
-	// add the input
-	ChaosVehicleMovement->SetHandbrakeInput(true);
+    if (!CanPawnMove(this))
+    {
+       return;
+    }
 
-	// call the Blueprint hook for the break lights
-	BrakeLights(true);
+    // add the input
+    ChaosVehicleMovement->SetHandbrakeInput(true);
+
+    // call the Blueprint hook for the break lights
+    BrakeLights(true);
 }
 
 void AMiniJamPawn::StopHandbrake(const FInputActionValue& Value)
 {
-	// add the input
-	ChaosVehicleMovement->SetHandbrakeInput(false);
+    if (!CanPawnMove(this))
+    {
+       return; 
+    }
 
-	// call the Blueprint hook for the break lights
-	BrakeLights(false);
+    // add the input
+    ChaosVehicleMovement->SetHandbrakeInput(false);
+
+    // call the Blueprint hook for the break lights
+    BrakeLights(false);
 }
 
 void AMiniJamPawn::LookAround(const FInputActionValue& Value)
 {
-	// get the flat angle value for the input 
-	float LookValue = Value.Get<float>();
+    // Look Around no afecta el movimiento, no necesita chequeo
+    
+    // get the flat angle value for the input 
+    float LookValue = Value.Get<float>();
 
-	// add the input
-	BackSpringArm->AddLocalRotation(FRotator(0.0f, LookValue, 0.0f));
+    // add the input
+    BackSpringArm->AddLocalRotation(FRotator(0.0f, LookValue, 0.0f));
 }
 
 void AMiniJamPawn::ToggleCamera(const FInputActionValue& Value)
 {
-	// toggle the active camera flag
-	bFrontCameraActive = !bFrontCameraActive;
+    // toggle the active camera flag
+    bFrontCameraActive = !bFrontCameraActive;
 
-	FrontCamera->SetActive(bFrontCameraActive);
-	BackCamera->SetActive(!bFrontCameraActive);
+    FrontCamera->SetActive(bFrontCameraActive);
+    BackCamera->SetActive(!bFrontCameraActive);
 }
 
 void AMiniJamPawn::ResetVehicle(const FInputActionValue& Value)
 {
-	// reset to a location slightly above our current one
-	FVector ResetLocation = GetActorLocation() + FVector(0.0f, 0.0f, 50.0f);
+    // reset to a location slightly above our current one
+    FVector ResetLocation = GetActorLocation() + FVector(0.0f, 0.0f, 50.0f);
 
-	// reset to our yaw. Ignore pitch and roll
-	FRotator ResetRotation = GetActorRotation();
-	ResetRotation.Pitch = 0.0f;
-	ResetRotation.Roll = 0.0f;
-	
-	// teleport the actor to the reset spot and reset physics
-	SetActorTransform(FTransform(ResetRotation, ResetLocation, FVector::OneVector), false, nullptr, ETeleportType::TeleportPhysics);
+    // reset to our yaw. Ignore pitch and roll
+    FRotator ResetRotation = GetActorRotation();
+    ResetRotation.Pitch = 0.0f;
+    ResetRotation.Roll = 0.0f;
+    
+    // teleport the actor to the reset spot and reset physics
+    SetActorTransform(FTransform(ResetRotation, ResetLocation, FVector::OneVector), false, nullptr, ETeleportType::TeleportPhysics);
 
-	GetMesh()->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
-	GetMesh()->SetPhysicsLinearVelocity(FVector::ZeroVector);
+    GetMesh()->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
+    GetMesh()->SetPhysicsLinearVelocity(FVector::ZeroVector);
 
-	UE_LOG(LogTemplateVehicle, Error, TEXT("Reset Vehicle"));
+    UE_LOG(LogTemplateVehicle, Error, TEXT("Reset Vehicle"));
 }
 
 #undef LOCTEXT_NAMESPACE

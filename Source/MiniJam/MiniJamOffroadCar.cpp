@@ -5,6 +5,7 @@
 #include "MiniJamOffroadWheelFront.h"
 #include "MiniJamOffroadWheelRear.h"
 #include "ChaosWheeledVehicleMovementComponent.h"
+#include "MiniJamUI.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Net/UnrealNetwork.h"
 
@@ -97,6 +98,15 @@ AMiniJamOffroadCar::AMiniJamOffroadCar()
 	CurrentEnergy = MaxEnergy;
 }
 
+
+void AMiniJamOffroadCar::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	OnRep_CurrentEnergy();
+}
+
+
 void AMiniJamOffroadCar::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -127,41 +137,93 @@ void AMiniJamOffroadCar::Tick(float DeltaTime)
 		UChaosWheeledVehicleMovementComponent* MovementComp = GetChaosVehicleMovement();
 		if (!MovementComp) return; 
        
-		
 		float CurrentSpeed = MovementComp->GetForwardSpeed();
-       
-		
        
 		if (CurrentEnergy > 0.0f)
 		{
+			float TotalDrainRate = BaseEnergyDrainRate;
+			
 			if (FMath::Abs(CurrentSpeed) > 1.0f) 
 			{
-				CurrentEnergy = FMath::Max(0.0f, CurrentEnergy - EnergyDrainRate * DeltaTime);
+				TotalDrainRate += MovingEnergyDrainRate;
 			}
+          
+			CurrentEnergy = FMath::Max(0.0f, CurrentEnergy - TotalDrainRate * DeltaTime);
 			
-			if (MovementComp->GetBrakeInput() >= 1.0f)
-			{
-				MovementComp->SetBrakeInput(0.0f);
-			}
+			MovementComp->SetBrakeInput(0.0f);
+			MovementComp->SetHandbrakeInput(false); 
           
 			bCanMove = true; 
 		}
-       
 		else 
 		{
+          
+			bCanMove = false;
 			
-			bCanMove = false; 
-		
 			if (FMath::Abs(CurrentSpeed) > 10.0f) 
 			{
-				MovementComp->SetThrottleInput(0.0f); 
-				MovementComp->SetBrakeInput(0.0f);    
+				MovementComp->SetThrottleInput(0.0f);   
+				MovementComp->SetBrakeInput(0.0f);      
+				MovementComp->SetHandbrakeInput(false); 
 			}
 			
 			else 
 			{
-				MovementComp->SetBrakeInput(1.0f); 
+				MovementComp->SetThrottleInput(0.0f); 
+				MovementComp->SetBrakeInput(1.0f);    
+				MovementComp->SetHandbrakeInput(true); 
 			}
 		}
 	}
+}
+
+void AMiniJamOffroadCar::OnRep_CurrentEnergy()
+{
+	// 1. Lógica para determinar el texto de estado
+	float EnergyPercent = CurrentEnergy / MaxEnergy;
+	FText StatusText;
+    
+	if (EnergyPercent <= 0.0f)
+	{
+		StatusText = FText::FromString(TEXT("SIN BATERÍA"));
+	}
+	else if (EnergyPercent <= 0.20f)
+	{
+		StatusText = FText::FromString(TEXT("BATERÍA BAJA"));
+	}
+	else
+	{
+		StatusText = FText::GetEmpty();
+	}
+
+	// 2. Comunicar los dos estados a la UI
+	if (VehicleHUD)
+	{
+		// 1. Actualiza el medidor/barra de energía (usando la función existente)
+		VehicleHUD->UpdateEnergy(CurrentEnergy, MaxEnergy); 
+
+		// 2. Actualiza el texto de alerta (usando la función NUEVA)
+		VehicleHUD->OnBatteryStatusUpdate(StatusText); 
+	}
+}
+
+FText AMiniJamOffroadCar::GetBatteryStatusText() const
+{
+	float EnergyPercent = 0.0f;
+	if (MaxEnergy > 0.0f)
+	{
+		EnergyPercent = CurrentEnergy / MaxEnergy;
+	}
+
+	if (EnergyPercent <= 0.0f)
+	{
+		return FText::FromString(TEXT("SIN BATERÍA"));
+	}
+	else if (EnergyPercent <= 0.20f)
+	{
+		return FText::FromString(TEXT("BATERÍA BAJA"));
+	}
+    
+	// Retorna texto vacío si la energía está bien
+	return FText::GetEmpty(); 
 }

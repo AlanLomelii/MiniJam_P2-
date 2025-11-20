@@ -32,6 +32,12 @@ public:
 
 	void UpdateEnergy(float CurrentEnergy, float MaxEnergy);
 
+	UFUNCTION(BlueprintImplementableEvent, Category = Vehicle)
+	void OnBatteryStatusUpdate(const FText& StatusText);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "GameLoop")
+	void OnGameOver(bool bIsWinner);
+
 protected:
 
 	/** Implemented in Blueprint to display the new speed */
@@ -45,4 +51,7 @@ protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = Vehicle)
 	void OnEnergyUpdate(float EnergyPercent);
+	
+	
+	
 };
