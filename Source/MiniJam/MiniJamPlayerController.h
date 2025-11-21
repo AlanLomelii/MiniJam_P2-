@@ -66,6 +66,7 @@ public:
 protected:
 
 	virtual void OnPossess(APawn* InPawn) override;
+	
 
 	// End PlayerController interface
 };
