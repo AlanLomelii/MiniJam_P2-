@@ -22,7 +22,7 @@ ABatteryItem::ABatteryItem()
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	// Valor que dara al jugador
-	EnergyValue = 25.f;
+	EnergyValue = 4.5f;
 }
 
 
